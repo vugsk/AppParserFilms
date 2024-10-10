@@ -22,15 +22,12 @@ def get_db():
         db.close()
 
 
-def equal(list1: list[objectMovies.Movie], list2: list[models.MovieBase]) -> list[objectMovies.Movie]:
+
+def equal(list1, list2: list[models.MovieBase]) -> list[objectMovies.Movie]:
     if len(list1) == 0:
         return list1
     
-    exist_in_two_lists: list[objectMovies.Movie] = list()
-    for i in list1:
-        for j in list2:
-            if i.title == j.title:
-                exist_in_two_lists.append(i)
+    exist_in_two_lists = [[i for j in list2 if i.title == j.title] for i in list1]
     
     are_number_of_elements_is_equal: bool = len(exist_in_two_lists) == len(list1)
     are_two_lists_equal: bool = len(list1) == len(list2)
@@ -41,15 +38,15 @@ def equal(list1: list[objectMovies.Movie], list2: list[models.MovieBase]) -> lis
     elif (not (are_number_of_elements_is_equal or are_two_lists_equal)) and not is_empty:
         for i in exist_in_two_lists:
             list1.remove(i)
+    
     return list1
 
 
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request, db: Session = Depends(get_db)):
-    movies: list[models.MovieBase] = crud.get_movies(db)
+    movies: list[models.MovieBase] = crud.get_movies_sorted_by_rating(db)
     
     render_page: str = "index.html"
-    
     data: dict[str, Request | list[models.MovieBase]] = {
         "request": request,
         "movies": movies
@@ -62,21 +59,18 @@ def read_root(request: Request, db: Session = Depends(get_db)):
 def load_movies(db: Session = Depends(get_db)):
     movies: list[objectMovies.Movie] = parser.parse_moveis()
     movies_database: list[models.MovieBase] = crud.get_movies(db)
+    status: str = ""
     
     if len(movies_database) != 0 and (len(equal(movies, movies_database)) == 0):
-        return {
-            "message": "OLD",
-            "content": {}
-        }
-    
-    for movie in movies:
-        crud.create_movie(db, schemas.MovieCreate(**movie.__dict__()))
-    
+        status = "OLD"
+    else:
+        status = "NEW"
+        for movie in movies:
+            crud.create_movie(db, schemas.MovieCreate(**movie.__dict__()))
+        
     sorted_movies: list[models.MovieBase] = crud.get_movies_sorted_by_rating(db)
     
     return {
-        "message": "NEW",
-        "content":
-            JSONResponse(content=[schemas.Movie.model_validate(movie).model_dump_json()
-                                  for movie in sorted_movies])
+        "message": status,
+        "content": [schemas.Movie.model_validate(movie).model_dump() for movie in sorted_movies]
     }
