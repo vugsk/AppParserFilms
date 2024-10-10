@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Parser</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Movie Parser</h1>
+        <button id="load-movies" class="btn btn-primary">Load New Movies</button>
+
+        <div id="no-movies-message" class="alert alert-warning mt-3" style="display: none;">
+            No movies found.
+        </div>
+
+        <table class="table mt-4">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody id="movie-table-body">
+                {% for movie in movies %}
+                <tr>
+                    <td>{{ movie.title }}</td>
+                    <td>{{ movie.description }}</td>
+                    <td>{{ movie.rating }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('load-movies').addEventListener('click', () => {
+                fetch('/movies/load', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then((data) => {
+                    const tableBody = document.getElementById('movie-table-body');
+                    const noMoviesMessage = document.getElementById('no-movies-message');
+                    const status = {"OLD": 'block', "NEW": 'none'}
+
+                    noMoviesMessage.style.display = status[data.message]; // Скрываем сообщение, если фильмы есть
+                    data.content.forEach(movie => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${movie.title}</td>
+                            <td>${movie.description}</td>
+                            <td>${movie.rating}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const noMoviesMessage = document.getElementById('no-movies-message');
+                    noMoviesMessage.textContent = 'Not new films.';
+                    noMoviesMessage.style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
